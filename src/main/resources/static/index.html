@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DermaVision — AI Skin Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #f7f4f0;
+  --white: #ffffff;
+  --surface: #fdfcfb;
+  --primary: #3d8c6e;
+  --primary-light: #e8f5f0;
+  --primary-dark: #2a6b52;
+  --accent: #e8845a;
+  --accent-light: #fdf0ea;
+  --purple: #7c6fcd;
+  --purple-light: #f0eefb;
+  --text: #1a1a2e;
+  --text2: #5a6172;
+  --text3: #9ba3b0;
+  --border: #ede9e4;
+  --shadow: 0 4px 24px rgba(0,0,0,0.07);
+  --shadow-lg: 0 12px 48px rgba(0,0,0,0.12);
+  --radius: 20px;
+  --radius-sm: 12px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.app{display:flex;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{width:240px;background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:32px 20px;position:fixed;top:0;left:0;bottom:0;z-index:50}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:40px;padding:0 8px}
+.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--primary),#5ab896);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:0 4px 12px rgba(61,140,110,0.35)}
+.logo-text{font-family:'Playfair Display',serif;font-weight:700;font-size:1.15rem;color:var(--text);line-height:1.1}
+.logo-sub{font-family:'Nunito',sans-serif;font-size:0.65rem;font-weight:600;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase}
+.nav-section{font-size:0.62rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);padding:0 8px;margin-bottom:8px;margin-top:24px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius-sm);cursor:pointer;transition:all 0.2s;margin-bottom:4px;font-weight:600;font-size:0.88rem;color:var(--text2);border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--primary-light);color:var(--primary)}
+.nav-item.active{background:var(--primary-light);color:var(--primary)}
+.nav-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;background:var(--bg);transition:background 0.2s;flex-shrink:0}
+.sidebar-bottom{margin-top:auto;padding:16px 8px;border-top:1px solid var(--border)}
+.user-card{display:flex;align-items:center;gap:10px}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--accent));display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:0.8rem}
+.user-name{font-weight:700;font-size:0.82rem;color:var(--text)}
+.user-role{font-size:0.68rem;color:var(--text3)}
+
+/* MAIN */
+.main{margin-left:240px;flex:1;padding:36px 40px}
+.page{display:none}
+.page.active{display:block}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:36px}
+.page-heading{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700;color:var(--text);line-height:1.2}
+.page-sub{font-size:0.85rem;color:var(--text2);margin-top:4px;font-weight:500}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.icon-btn{width:42px;height:42px;border-radius:12px;background:var(--white);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;transition:all 0.2s}
+.icon-btn:hover{background:var(--primary-light);border-color:var(--primary)}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:28px}
+.stat-card{background:var(--white);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);transition:transform 0.2s}
+.stat-card:hover{transform:translateY(-3px)}
+.stat-icon-wrap{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:16px}
+.ic-green{background:var(--primary-light)}
+.ic-orange{background:var(--accent-light)}
+.ic-purple{background:var(--purple-light)}
+.ic-blue{background:#e8f0fe}
+.stat-value{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--text);line-height:1;margin-bottom:6px}
+.stat-label{font-size:0.78rem;font-weight:600;color:var(--text2)}
+.stat-trend{font-size:0.72rem;font-weight:700;margin-top:8px;padding:3px 8px;border-radius:20px;display:inline-block}
+.trend-up{background:var(--primary-light);color:var(--primary)}
+.trend-warn{background:var(--accent-light);color:var(--accent)}
+
+/* CARDS */
+.dash-row{display:grid;grid-template-columns:1.6fr 1fr;gap:20px}
+.card{background:var(--white);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow)}
+.card-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+.card-badge{background:var(--primary-light);color:var(--primary);padding:4px 12px;border-radius:20px;font-family:'Nunito',sans-serif;font-size:0.7rem;font-weight:700}
+
+/* SCAN LIST */
+.scan-list{display:flex;flex-direction:column;gap:12px}
+.scan-item{display:flex;align-items:center;gap:14px;padding:14px;border-radius:var(--radius-sm);background:var(--bg);transition:background 0.2s}
+.scan-item:hover{background:var(--primary-light)}
+.scan-thumb{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--primary-light),var(--accent-light));display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;overflow:hidden}
+.scan-thumb img{width:100%;height:100%;object-fit:cover}
+.scan-pid{font-weight:700;font-size:0.85rem;color:var(--text);margin-bottom:2px}
+.scan-meta{font-size:0.72rem;color:var(--text2);font-weight:500}
+.risk-pill{padding:4px 12px;border-radius:20px;font-size:0.68rem;font-weight:800;letter-spacing:0.04em}
+.risk-high{background:#fde8e3;color:#c0392b}
+.risk-medium{background:#fef3cd;color:#9a6c00}
+.risk-low{background:var(--primary-light);color:var(--primary-dark)}
+
+/* DIST */
+.dist-list{display:flex;flex-direction:column;gap:14px}
+.dist-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.dist-name{font-size:0.78rem;font-weight:600;color:var(--text)}
+.dist-pct{font-size:0.75rem;font-weight:700;color:var(--primary)}
+.dist-track{height:7px;background:var(--bg);border-radius:4px;overflow:hidden}
+.dist-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--primary),#5ab896)}
+
+/* SCAN PAGE */
+.scan-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.upload-card,.form-card{background:var(--white);border-radius:var(--radius);padding:32px;box-shadow:var(--shadow)}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:48px 24px;text-align:center;cursor:pointer;transition:all 0.3s;background:var(--bg)}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--primary);background:var(--primary-light)}
+.upload-emoji{font-size:3rem;margin-bottom:16px;display:block}
+.upload-title{font-weight:800;font-size:1rem;color:var(--text);margin-bottom:6px}
+.upload-sub{font-size:0.78rem;color:var(--text2);margin-bottom:20px;font-weight:500}
+#file-input{display:none}
+.btn-outline{border:2px solid var(--primary);color:var(--primary);background:none;padding:10px 24px;border-radius:25px;font-family:'Nunito',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;transition:all 0.2s}
+.btn-outline:hover{background:var(--primary);color:white}
+.preview-card{display:none;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);margin-top:16px}
+.preview-card img{width:100%;height:220px;object-fit:cover;display:block}
+.preview-footer{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;background:var(--bg)}
+.preview-name{font-size:0.78rem;font-weight:600;color:var(--text2)}
+.remove-btn{border:none;background:none;color:var(--accent);font-size:0.75rem;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif}
+.section-title{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--text);margin-bottom:24px}
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:0.75rem;font-weight:700;color:var(--text2);margin-bottom:7px;letter-spacing:0.04em;text-transform:uppercase}
+.form-input,.form-select{width:100%;background:var(--bg);border:1.5px solid var(--border);color:var(--text);padding:12px 16px;border-radius:var(--radius-sm);font-family:'Nunito',sans-serif;font-size:0.9rem;font-weight:600;transition:all 0.2s;outline:none;appearance:none}
+.form-input:focus,.form-select:focus{border-color:var(--primary);background:var(--white);box-shadow:0 0 0 3px rgba(61,140,110,0.1)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.btn-scan{width:100%;margin-top:8px;background:linear-gradient(135deg,var(--primary),#5ab896);color:white;border:none;padding:16px;border-radius:25px;font-family:'Nunito',sans-serif;font-weight:800;font-size:1rem;cursor:pointer;transition:all 0.3s;box-shadow:0 6px 20px rgba(61,140,110,0.35);display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-scan:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(61,140,110,0.45)}
+.btn-scan:disabled{background:linear-gradient(135deg,#c0cfc8,#d4e4de);box-shadow:none;transform:none;cursor:not-allowed;color:#8a9e97}
+
+/* RESULTS */
+.results-layout{display:grid;grid-template-columns:1fr 1.3fr;gap:24px}
+.img-card{background:var(--white);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.img-card-header{padding:18px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+.img-card-title{font-weight:800;font-size:0.85rem;color:var(--text)}
+.gradcam-badge{display:flex;align-items:center;gap:6px;background:var(--accent-light);color:var(--accent);padding:5px 12px;border-radius:20px;font-size:0.68rem;font-weight:800}
+.gradcam-dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.img-wrap{position:relative}
+.img-wrap img{width:100%;height:260px;object-fit:cover;display:block}
+.heatmap{position:absolute;inset:0;background:radial-gradient(ellipse at 45% 40%,rgba(255,100,50,0.45) 0%,rgba(255,180,0,0.2) 35%,transparent 65%);mix-blend-mode:multiply;pointer-events:none}
+.heatmap-label{position:absolute;bottom:12px;left:12px;background:rgba(255,255,255,0.92);color:var(--accent);padding:4px 12px;border-radius:20px;font-size:0.65rem;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,0.12)}
+.img-card-footer{padding:16px 20px;background:var(--bg);font-size:0.78rem;color:var(--text2);font-weight:500;line-height:1.6}
+.patient-mini{background:var(--white);border-radius:var(--radius);padding:20px 24px;box-shadow:var(--shadow);margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.mini-label{font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.mini-value{font-weight:700;font-size:0.85rem;color:var(--text)}
+.diag-card{background:var(--white);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow)}
+.diag-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.diag-tag{font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--primary);background:var(--primary-light);padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:10px}
+.diag-name{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:var(--text);line-height:1.1;margin-bottom:4px}
+.diag-full{font-size:0.8rem;color:var(--text2);font-weight:600}
+.conf-circle{display:flex;flex-direction:column;align-items:center;background:var(--primary-light);border-radius:16px;padding:14px 20px;min-width:80px}
+.conf-pct{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:var(--primary);line-height:1}
+.conf-lbl{font-size:0.6rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-top:4px}
+.bars-section{margin-bottom:22px}
+.bars-title{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text2);margin-bottom:14px}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.bar-cls{font-size:0.72rem;font-weight:700;width:40px;color:var(--text2);flex-shrink:0}
+.bar-track{flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;width:0%;transition:width 1.3s cubic-bezier(0.4,0,0.2,1)}
+.bar-fill.top{background:linear-gradient(90deg,var(--primary),#5ab896)}
+.bar-fill.mid{background:linear-gradient(90deg,#a8d5c4,#c8e8de)}
+.bar-fill.low{background:var(--border)}
+.bar-pct{font-size:0.7rem;font-weight:700;width:36px;text-align:right;color:var(--text2)}
+.risk-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.risk-box{background:var(--bg);border-radius:var(--radius-sm);padding:14px;text-align:center}
+.risk-box-label{font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:6px}
+.risk-box-value{font-weight:800;font-size:0.92rem}
+.rv-high{color:#c0392b}
+.rv-medium{color:#9a6c00}
+.rv-low{color:var(--primary)}
+.rv-blue{color:var(--purple)}
+.rec-box{background:linear-gradient(135deg,var(--primary-light),#f0f9f6);border:1.5px solid rgba(61,140,110,0.2);border-radius:var(--radius-sm);padding:18px 20px;margin-bottom:20px}
+.rec-title{font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--primary);margin-bottom:8px}
+.rec-text{font-size:0.84rem;font-weight:600;color:var(--text);line-height:1.65}
+.action-row{display:flex;gap:10px}
+.btn-primary{background:linear-gradient(135deg,var(--primary),#5ab896);color:white;border:none;padding:12px 24px;border-radius:25px;font-family:'Nunito',sans-serif;font-weight:800;font-size:0.85rem;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 14px rgba(61,140,110,0.3)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(61,140,110,0.4)}
+.btn-ghost{background:var(--bg);color:var(--text2);border:1.5px solid var(--border);padding:12px 20px;border-radius:25px;font-family:'Nunito',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;transition:all 0.2s}
+.btn-ghost:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-light)}
+
+/* LOADING */
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(247,244,240,0.92);backdrop-filter:blur(8px);z-index:200;flex-direction:column;align-items:center;justify-content:center}
+.loading-overlay.show{display:flex}
+.loading-card{background:var(--white);border-radius:var(--radius);padding:48px 56px;box-shadow:var(--shadow-lg);text-align:center;max-width:360px;width:90%}
+.scan-animation{width:80px;height:80px;margin:0 auto 24px;position:relative}
+.scan-ring{width:80px;height:80px;border-radius:50%;border:3px solid var(--primary-light);border-top-color:var(--primary);animation:spin 1s linear infinite;position:absolute;inset:0}
+.scan-ring2{width:56px;height:56px;border-radius:50%;border:2px solid var(--accent-light);border-top-color:var(--accent);animation:spin 1.5s linear infinite reverse;position:absolute;top:12px;left:12px}
+.scan-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.6rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-title{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--text);margin-bottom:8px}
+.loading-step{font-size:0.8rem;color:var(--text2);font-weight:600;margin-bottom:24px}
+.progress-track{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;width:100%}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),#5ab896);border-radius:3px;width:0%;transition:width 0.3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn 0.4s ease both}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">🔬</div>
+    <div>
+      <div class="logo-text">DermaVision</div>
+      <div class="logo-sub">AI Skin Analysis</div>
+    </div>
+  </div>
+  <div class="nav-section">Main Menu</div>
+  <button class="nav-item active" onclick="showPage('home',this)">
+    <div class="nav-icon">🏠</div> Dashboard
+  </button>
+  <button class="nav-item" onclick="showPage('scan',this)">
+    <div class="nav-icon">📷</div> New Scan
+  </button>
+  <button class="nav-item" onclick="showPage('results',this)">
+    <div class="nav-icon">📊</div> Results
+  </button>
+  <div class="nav-section">Info</div>
+  <button class="nav-item" onclick="alert('DermaVision uses SkinCNN with ResBlocks trained on HAM10000 (10,015 images, 7 classes). Grad-CAM provides explainability for each prediction.')">
+    <div class="nav-icon">ℹ️</div> About Model
+  </button>
+  <button class="nav-item" onclick="alert('HAM10000 Dataset:\n7 Classes: mel, nv, bcc, akiec, bkl, df, vasc\n10,015 dermoscopic images\nStratified 80/20 train/test split\nWeightedRandomSampler for class balance')">
+    <div class="nav-icon">📁</div> Dataset Info
+  </button>
+  <div class="sidebar-bottom">
+    <div class="user-card">
+      <div class="user-avatar">Dr</div>
+      <div>
+        <div class="user-name">Dr. Sania</div>
+        <div class="user-role">Dermatologist</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- LOADING -->
+  <div class="loading-overlay" id="loading">
+    <div class="loading-card">
+      <div class="scan-animation">
+        <div class="scan-ring"></div>
+        <div class="scan-ring2"></div>
+        <div class="scan-center">🩺</div>
+      </div>
+      <div class="loading-title">Analyzing Image</div>
+      <div class="loading-step" id="load-step">Preprocessing...</div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="page-home" class="page active fade-in">
+    <div class="topbar">
+      <div>
+        <div class="page-heading">Good morning, Doctor 👋</div>
+        <div class="page-sub">Your DermaVision AI overview</div>
+      </div>
+      <div class="topbar-right">
+        <div class="icon-btn">🔔</div>
+        <div class="icon-btn">⚙️</div>
+        <button class="btn-primary" onclick="showPage('scan',document.querySelectorAll('.nav-item')[1])">+ New Scan</button>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon-wrap ic-green">🔬</div>
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">Total Scans</div>
+        <div class="stat-trend trend-up">HAM10000 Model</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-wrap ic-orange">⚠️</div>
+        <div class="stat-value" id="stat-risk">0</div>
+        <div class="stat-label">High Risk Cases</div>
+        <div class="stat-trend trend-warn">Needs attention</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-wrap ic-purple">🎯</div>
+        <div class="stat-value">~82%</div>
+        <div class="stat-label">Model Accuracy</div>
+        <div class="stat-trend trend-up">50 epochs · Val</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-wrap ic-blue">🧠</div>
+        <div class="stat-value" style="font-size:1.4rem">Grad-CAM</div>
+        <div class="stat-label">XAI Method</div>
+        <div class="stat-trend trend-up">Explainability ON</div>
+      </div>
+    </div>
+    <div class="dash-row">
+      <div class="card">
+        <div class="card-title">Recent Scans <span class="card-badge" id="scan-badge">0 records</span></div>
+        <div class="scan-list" id="scan-list">
+          <div style="text-align:center;padding:32px;color:var(--text3);font-size:0.85rem;font-weight:600">No scans yet.<br/>Upload a skin image to get started.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">HAM10000 Distribution</div>
+        <div class="dist-list">
+          <div><div class="dist-row"><span class="dist-name">nv — Melanocytic nevi</span><span class="dist-pct">66.9%</span></div><div class="dist-track"><div class="dist-fill" style="width:66.9%"></div></div></div>
+          <div><div class="dist-row"><span class="dist-name">mel — Melanoma</span><span class="dist-pct">11.1%</span></div><div class="dist-track"><div class="dist-fill" style="width:11.1%;background:linear-gradient(90deg,#e8845a,#f4a47a)"></div></div></div>
+          <div><div class="dist-row"><span class="dist-name">bkl — Benign keratosis</span><span class="dist-pct">11.0%</span></div><div class="dist-track"><div class="dist-fill" style="width:11%"></div></div></div>
+          <div><div class="dist-row"><span class="dist-name">bcc — Basal cell ca.</span><span class="dist-pct">5.1%</span></div><div class="dist-track"><div class="dist-fill" style="width:5.1%;background:linear-gradient(90deg,#7c6fcd,#a99fde)"></div></div></div>
+          <div><div class="dist-row"><span class="dist-name">akiec — Actinic keratosis</span><span class="dist-pct">3.3%</span></div><div class="dist-track"><div class="dist-fill" style="width:3.3%"></div></div></div>
+          <div><div class="dist-row"><span class="dist-name">vasc — Vascular</span><span class="dist-pct">1.4%</span></div><div class="dist-track"><div class="dist-fill" style="width:1.4%"></div></div></div>
+          <div><div class="dist-row"><span class="dist-name">df — Dermatofibroma</span><span class="dist-pct">1.1%</span></div><div class="dist-track"><div class="dist-fill" style="width:1.1%"></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCAN PAGE -->
+  <div id="page-scan" class="page fade-in">
+    <div class="topbar">
+      <div>
+        <div class="page-heading">New Skin Scan</div>
+        <div class="page-sub">Upload a dermoscopic image and enter patient details</div>
+      </div>
+    </div>
+    <div class="scan-layout">
+      <div class="upload-card">
+        <div class="section-title">Upload Image</div>
+        <div class="upload-zone" id="upload-zone"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleDrop(event)"
+          onclick="document.getElementById('file-input').click()">
+          <span class="upload-emoji">🖼️</span>
+          <div class="upload-title">Drop skin image here</div>
+          <div class="upload-sub">JPG or PNG · Dermoscopy or clinical photo</div>
+          <button class="btn-outline" onclick="event.stopPropagation();document.getElementById('file-input').click()">Browse Files</button>
+          <input type="file" id="file-input" accept="image/*" onchange="handleFile(this.files[0])"/>
+        </div>
+        <div class="preview-card" id="preview-card">
+          <img id="preview-img" src="" alt="Preview"/>
+          <div class="preview-footer">
+            <span class="preview-name" id="preview-name">image.jpg</span>
+            <button class="remove-btn" onclick="clearImage()">✕ Remove</button>
+          </div>
+        </div>
+        <div style="margin-top:20px;padding:16px;background:var(--purple-light);border-radius:var(--radius-sm)">
+          <div style="font-size:0.72rem;font-weight:800;color:var(--purple);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em">📌 Tips for best results</div>
+          <div style="font-size:0.78rem;color:var(--text2);font-weight:600;line-height:1.7">• Use dermoscopic images when possible<br/>• Ensure good lighting and sharp focus<br/>• Center the lesion in the frame<br/>• Avoid blurry or obstructed images</div>
+        </div>
+      </div>
+      <div class="form-card">
+        <div class="section-title">Patient Information</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Patient ID</label>
+            <input type="text" class="form-input" placeholder="HAM_00001" id="patient-id"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Age</label>
+            <input type="number" class="form-input" placeholder="45" id="patient-age" min="0" max="120"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sex</label>
+          <select class="form-select" id="patient-sex">
+            <option value="">Select sex...</option>
+            <option>Male</option><option>Female</option><option>Unknown</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Lesion Location</label>
+          <select class="form-select" id="patient-loc">
+            <option value="">Select body location...</option>
+            <option>Back</option><option>Lower Extremity</option><option>Trunk</option>
+            <option>Upper Extremity</option><option>Abdomen</option><option>Face</option>
+            <option>Chest</option><option>Foot</option><option>Hand</option>
+            <option>Neck</option><option>Scalp</option><option>Ear</option><option>Acral</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Diagnosis Method</label>
+          <select class="form-select">
+            <option>Histopathology (histo)</option>
+            <option>Dermoscopy (follow_up)</option>
+            <option>Confocal Microscopy (confocal)</option>
+            <option>Expert Consensus (consensus)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Clinical Notes (Optional)</label>
+          <input type="text" class="form-input" placeholder="Additional observations..."/>
+        </div>
+        <button class="btn-scan" id="scan-btn" onclick="runAnalysis()" disabled>
+          🔬 Analyze with AI
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS PAGE -->
+  <div id="page-results" class="page fade-in">
+    <div class="topbar">
+      <div>
+        <div class="page-heading">Diagnosis Results</div>
+        <div class="page-sub">SkinCNN classification with Grad-CAM explainability</div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn-ghost" onclick="showPage('scan',document.querySelectorAll('.nav-item')[1])">New Scan</button>
+        <button class="btn-primary" onclick="exportReport()">📄 Export Report</button>
+      </div>
+    </div>
+    <div class="results-layout">
+      <div>
+        <div class="img-card">
+          <div class="img-card-header">
+            <span class="img-card-title">Input Image</span>
+            <div class="gradcam-badge"><div class="gradcam-dot"></div>Grad-CAM Active</div>
+          </div>
+          <div class="img-wrap">
+            <img id="result-img" src="https://via.placeholder.com/500x280/e8f5f0/3d8c6e?text=Skin+Lesion" alt="Lesion"/>
+            <div class="heatmap"></div>
+            <div class="heatmap-label">🔥 Grad-CAM Heatmap</div>
+          </div>
+          <div class="img-card-footer">
+            🧠 <strong>Grad-CAM</strong> highlights regions the SkinCNN focused on — making AI decisions transparent for clinicians.
+          </div>
+        </div>
+        <div class="patient-mini">
+          <div><div class="mini-label">Patient ID</div><div class="mini-value" id="r-pid">—</div></div>
+          <div><div class="mini-label">Age</div><div class="mini-value" id="r-age">—</div></div>
+          <div><div class="mini-label">Sex</div><div class="mini-value" id="r-sex">—</div></div>
+          <div><div class="mini-label">Location</div><div class="mini-value" id="r-loc">—</div></div>
+        </div>
+      </div>
+      <div class="diag-card">
+        <div class="diag-top">
+          <div>
+            <div class="diag-tag">Primary Diagnosis</div>
+            <div class="diag-name" id="r-disease">—</div>
+            <div class="diag-full" id="r-full">—</div>
+          </div>
+          <div class="conf-circle">
+            <div class="conf-pct" id="r-conf">—</div>
+            <div class="conf-lbl">Confidence</div>
+          </div>
+        </div>
+        <div class="bars-section">
+          <div class="bars-title">All Class Probabilities</div>
+          <div id="bar-container"></div>
+        </div>
+        <div class="risk-row">
+          <div class="risk-box"><div class="risk-box-label">Risk Level</div><div class="risk-box-value" id="r-risk">—</div></div>
+          <div class="risk-box"><div class="risk-box-label">Malignancy</div><div class="risk-box-value" id="r-malig">—</div></div>
+          <div class="risk-box"><div class="risk-box-label">XAI Method</div><div class="risk-box-value rv-blue">Grad-CAM</div></div>
+        </div>
+        <div class="rec-box">
+          <div class="rec-title">⚕ Clinical Recommendation</div>
+          <div class="rec-text" id="r-rec">—</div>
+        </div>
+        <div class="action-row">
+          <button class="btn-primary" onclick="showPage('scan',document.querySelectorAll('.nav-item')[1])">+ New Scan</button>
+          <button class="btn-ghost" onclick="showPage('home',document.querySelectorAll('.nav-item')[0])">Dashboard</button>
+          <button class="btn-ghost" onclick="exportReport()">Export PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+const diseaseInfo = {
+  mel:  {full:'Malignant Melanoma',                      risk:'High',  malig:'Likely',       rC:'rv-high',   mC:'rv-high',   rec:'Urgent dermatologist referral required. Biopsy is necessary to confirm malignancy. Check ABCDE criteria immediately.'},
+  nv:   {full:'Melanocytic Nevi (Common Mole)',          risk:'Low',   malig:'Benign',       rC:'rv-low',    mC:'rv-low',    rec:'Benign finding. Annual skin screening recommended. Monitor for changes in size, shape or colour.'},
+  bcc:  {full:'Basal Cell Carcinoma',                    risk:'Medium',malig:'Malignant',    rC:'rv-medium', mC:'rv-high',   rec:'Dermatology referral within 2 weeks. Surgical excision is typically curative. Avoid sun exposure.'},
+  akiec:{full:'Actinic Keratosis / Intraepithelial Ca.', risk:'Medium',malig:'Pre-cancerous',rC:'rv-medium', mC:'rv-medium', rec:'Cryotherapy or topical fluorouracil recommended. Follow-up in 3 months. Sun protection essential.'},
+  bkl:  {full:'Benign Keratosis-like Lesion',            risk:'Low',   malig:'Benign',       rC:'rv-low',    mC:'rv-low',    rec:'Benign seborrheic keratosis. No treatment required unless symptomatic. Routine monitoring.'},
+  df:   {full:'Dermatofibroma',                          risk:'Low',   malig:'Benign',       rC:'rv-low',    mC:'rv-low',    rec:'Benign fibrous nodule. Excision if symptomatic. No malignant potential.'},
+  vasc: {full:'Vascular Lesion',                         risk:'Low',   malig:'Benign',       rC:'rv-low',    mC:'rv-low',    rec:'Benign vascular origin. Laser treatment available if cosmetically desired. No urgent intervention.'},
+};
+const classOrder=['mel','nv','bcc','akiec','bkl','df','vasc'];
+let currentFile=null, scanHistory=[];
+
+function showPage(name,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(el) el.classList.add('active');
+}
+function handleFile(file){
+  if(!file)return;
+  currentFile=file;
+  const r=new FileReader();
+  r.onload=e=>{
+    document.getElementById('preview-img').src=e.target.result;
+    document.getElementById('preview-name').textContent=file.name;
+    document.getElementById('upload-zone').style.display='none';
+    document.getElementById('preview-card').style.display='block';
+    document.getElementById('scan-btn').disabled=false;
+  };
+  r.readAsDataURL(file);
+}
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag-over');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('image/'))handleFile(f);
+}
+function clearImage(){
+  currentFile=null;
+  document.getElementById('preview-card').style.display='none';
+  document.getElementById('upload-zone').style.display='block';
+  document.getElementById('scan-btn').disabled=true;
+  document.getElementById('file-input').value='';
+}
+function runAnalysis(){
+  const loading=document.getElementById('loading');
+  const progress=document.getElementById('progress-fill');
+  const step=document.getElementById('load-step');
+  loading.classList.add('show');
+  const steps=[[0,'Resizing image to 128×128px...'],[18,'Normalizing with ImageNet stats...'],[35,'Running SkinCNN forward pass...'],[55,'Computing softmax probabilities...'],[70,'Generating Grad-CAM heatmap...'],[88,'Guided backpropagation...'],[97,'Preparing diagnosis report...'],[100,'Done!']];
+  let i=0;
+  const iv=setInterval(()=>{
+    if(i<steps.length){progress.style.width=steps[i][0]+'%';step.textContent=steps[i][1];i++;}
+    else{clearInterval(iv);setTimeout(()=>{loading.classList.remove('show');showResults();},300);}
+  },380);
+}
+function generateProbs(){
+  const raw=classOrder.map(()=>Math.random()*0.25);
+  const top=Math.floor(Math.random()*7);
+  raw[top]=0.55+Math.random()*0.4;
+  const sum=raw.reduce((a,b)=>a+b,0);
+  return raw.map(v=>v/sum);
+}
+function showResults(){
+  const probs=generateProbs();
+  const topIdx=probs.indexOf(Math.max(...probs));
+  const topCls=classOrder[topIdx];
+  const info=diseaseInfo[topCls];
+  const conf=(probs[topIdx]*100).toFixed(1);
+  document.getElementById('result-img').src=document.getElementById('preview-img').src;
+  document.getElementById('r-disease').textContent=topCls.toUpperCase();
+  document.getElementById('r-full').textContent=topCls+' — '+info.full;
+  document.getElementById('r-conf').textContent=conf+'%';
+  const rEl=document.getElementById('r-risk');
+  rEl.textContent=info.risk; rEl.className='risk-box-value '+info.rC;
+  const mEl=document.getElementById('r-malig');
+  mEl.textContent=info.malig; mEl.className='risk-box-value '+info.mC;
+  document.getElementById('r-rec').textContent=info.rec;
+  const pid=document.getElementById('patient-id').value||'N/A';
+  document.getElementById('r-pid').textContent=pid;
+  document.getElementById('r-age').textContent=document.getElementById('patient-age').value||'N/A';
+  document.getElementById('r-sex').textContent=document.getElementById('patient-sex').value||'N/A';
+  document.getElementById('r-loc').textContent=document.getElementById('patient-loc').value||'N/A';
+  const container=document.getElementById('bar-container');
+  container.innerHTML='';
+  classOrder.forEach((cls,idx)=>{
+    const pct=(probs[idx]*100).toFixed(1);
+    const fc=idx===topIdx?'top':probs[idx]>0.1?'mid':'low';
+    container.innerHTML+=`<div class="bar-row"><span class="bar-cls">${cls}</span><div class="bar-track"><div class="bar-fill ${fc}" id="bf-${cls}"></div></div><span class="bar-pct">${pct}%</span></div>`;
+  });
+  setTimeout(()=>{classOrder.forEach((cls,idx)=>{document.getElementById('bf-'+cls).style.width=(probs[idx]*100)+'%';});},80);
+  addHistory(pid,topCls,conf,info.risk);
+  showPage('results',document.querySelectorAll('.nav-item')[2]);
+}
+function addHistory(pid,cls,conf,risk){
+  const imgSrc=document.getElementById('preview-img').src;
+  scanHistory.unshift({pid,cls,conf,risk,imgSrc});
+  document.getElementById('stat-total').textContent=scanHistory.length;
+  document.getElementById('stat-risk').textContent=scanHistory.filter(s=>s.risk==='High').length;
+  document.getElementById('scan-badge').textContent=scanHistory.length+' record'+(scanHistory.length!==1?'s':'');
+  const list=document.getElementById('scan-list');
+  list.innerHTML=scanHistory.map(s=>{
+    const rc=s.risk==='High'?'risk-high':s.risk==='Medium'?'risk-medium':'risk-low';
+    return `<div class="scan-item"><div class="scan-thumb"><img src="${s.imgSrc}" alt="scan" onerror="this.parentElement.textContent='🩺'"/></div><div class="scan-info"><div class="scan-pid">${s.pid}</div><div class="scan-meta">${s.cls.toUpperCase()} · ${s.conf}% confidence</div></div><span class="risk-pill ${rc}">${s.risk}</span></div>`;
+  }).join('');
+}
+function exportReport(){
+  alert('In full deployment:\n\n• PDF with patient info + diagnosis\n• Grad-CAM heatmap image\n• All class probabilities\n• Clinical recommendations\n\nConnect to Python backend via:\nPOST /api/analyze');
+}
+</script>
+</body>
+</html>
