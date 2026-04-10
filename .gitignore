@@ -2,3 +2,7 @@
 build/
 *.class
 *.log
+venv/
+__pycache__/
+*.pyc
+.env
